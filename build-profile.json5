@@ -1,0 +1,48 @@
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "default",
+        "material": {
+          "certpath": "C:/Users/memo2586/.ohos/config/openharmony/default_IFPClient_qoKNTeDVf0cvG_FZ65Mr7G9fLK3iB_IZIdRa9CK7qNs=.cer",
+          "storePassword": "0000001A299269E60449D016EC5B807672A4EC83736B534DB37E6E28B1923CB6D1B9E86C9F39318005C8",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001AD91E4DE77998C60DB0A4C0D3FEFAC331C9A5F6F1D6DA1C41AE77A0F19E214B0D4A1243855528",
+          "profile": "C:/Users/memo2586/.ohos/config/openharmony/default_IFPClient_qoKNTeDVf0cvG_FZ65Mr7G9fLK3iB_IZIdRa9CK7qNs=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:/Users/memo2586/.ohos/config/openharmony/default_IFPClient_qoKNTeDVf0cvG_FZ65Mr7G9fLK3iB_IZIdRa9CK7qNs=.p12"
+        }
+      }
+    ],
+    "compileSdkVersion": 9,
+    "compatibleSdkVersion": 9,
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug",
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}
