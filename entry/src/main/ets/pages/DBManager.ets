@@ -67,11 +67,11 @@ export function insertDataArr(context, list): any {
   })
 }
 
-export function queryData(context, page:number, pageSize: number): any {
+export function queryData(context, page:number, indexOffset: number, pageSize: number): any {
   let promise = data_rdb.getRdbStore(context, STORE_CONFIG, 1)
   return promise.then(async (rdbStore) => {
     // 查询操作
-    const offset: number = (page - 1) * pageSize;
+    const offset: number = (page - 1) * pageSize + indexOffset;
     const querySqlString =  `SELECT * FROM ${TAB_LOG} ORDER BY date DESC LIMIT ${pageSize} OFFSET ${offset}`
 
     try{

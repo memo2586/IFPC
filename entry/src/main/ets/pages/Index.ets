@@ -1,20 +1,44 @@
 import {createTable, insertData, queryData} from './DBManager'
 import systemDateTime from '@ohos.systemDateTime';
 import display from '@ohos.display'
+// @ts-ignore
+import i2cnapidemo from '@ohos.i2cnapidemo';
+// @ts-ignore
+import adc_napi from '@ohos.adc_napi';
+// @ts-ignore
+import pwmtest from '@ohos.pwmtest';
+import prompt from '@ohos.prompt';
 
 @Entry
 @Component
 struct Home {
+
+  @State pwm1_start :boolean = false
+  @State pwm2_start :boolean = false
+  @State flameSensorThreshold: number = 10
+  @State smokeSensorThreshold: number = 10
+
   private controller_tabs : TabsController = new TabsController()
-  //private controller_dialog: CustomDialogController = new CustomDialogController()
+  private controller_dialog1: CustomDialogController = new CustomDialogController({
+    builder: CustomDialogValueInput({
+      textValue: this.flameSensorThreshold,
+      inputValue: $flameSensorThreshold,
+    })
+  })
+  private controller_dialog2: CustomDialogController = new CustomDialogController({
+    builder: CustomDialogValueInput({
+      textValue: this.smokeSensorThreshold,
+      inputValue: $smokeSensorThreshold,
+    })
+  })
   private displayClass: display.Display | null = null
   private dpi: number = 160
 
   @State list: Array<any> = []
   @State gridData: any[6] = []
-
   @State page: number = 1
   private pageSize: number = 20
+  private indexOffset: number = 0
 
   // 测试用数据
   private testData: any[6] = [
@@ -48,31 +72,78 @@ struct Home {
     // 启动定时器
     setInterval(this.update.bind(this), 3000)
   }
+
   update() {
-    for(let i = 0; i < 6; i++){
-      const randNum = getRandomNumber(1, 103)
-      const lv = Math.floor((randNum - 88) / 4)
-      this.testData[i].value = randNum
-      if(lv < 1) this.testData[i].status = 0
-      else{
-        this.testData[i].value = randNum
-        this.testData[i].status = 1
+
+    // 循环处理六个网格的数据
+    for (let i = 0; i < 6; i++) {
+      const randNum = getRandomNumber(1, 103);
+      this.testData[i].value = randNum;
+
+      // 获取温度、湿度
+      const sensorData = readTemperatureAndHumidity();
+      if(sensorData!=null){
+        // 温度
+        if(i==2){
+          this.testData[i].value = sensorData.temperatureC.toFixed(3);
+        }
+        // 湿度
+        if(i==3){
+          this.testData[i].value = sensorData.humidity.toFixed(3);
+        }
+      }
+      // 获取ppm(烟雾浓度)
+      const ppmValue_f = getPPMValue();
+
+      if(ppmValue_f){
+        const ppmValue = ppmValue_f.toFixed(3)
+        // 烟雾浓度
+        if(i==0){
+          this.testData[i].value = ppmValue;
+        }
+      }
+
+      // 获取火焰传感器 adc值
+      const fireValue_f = getFIREValue();
+      if(fireValue_f){
+        const fireValue = fireValue_f.toFixed(3)
+        // 火焰adc
+        if(i==1){
+          this.testData[i].value = fireValue;
+        }
+      }
+
+      // 计算警报等级
+      const lv = Math.floor((randNum - 88) / 4);
+
+      // 如果警报等级小于1，将状态设为0
+      if (lv < 1) {
+        this.testData[i].status = 0;
+      } else {
+        // 否则，设置状态为1，并获取时间字符串
+        this.testData[i].value = randNum;
+        this.testData[i].status = 1;
         getTimeString().then(time => {
+          // 构造警报信息对象
           const item = {
             date: time,
             level: `${lv}`,
-            info: `${this.gridArr[i]}发出${lv}级警报！` }
+            info: `${this.gridArr[i]}发出${lv}级警报！`
+          };
+          // 插入数据并在插入成功后更新列表
           insertData(getContext(this), item).then(res => {
-            console.log(`update: ${JSON.stringify(item)}`)
-            if(res) this.list.unshift(item)
+            console.log(`update: ${JSON.stringify(item)}`);
+            this.indexOffset++
+            if (res) this.list.unshift(item)
             else console.log(`update error`)
-          })
-        })
+          });
+        });
       }
     }
-    this.gridData.clear
-    this.gridData = this.testData
+
+    this.gridData = this.testData;
   }
+
   addData() {
     for(let i = 0; i < 20; i++){
       getTimeString().then(time => {
@@ -87,8 +158,9 @@ struct Home {
       })
     }
   }
+
   query() {
-    queryData(getContext(this), this.page, this.pageSize)
+    queryData(getContext(this), this.page, this.indexOffset, this.pageSize)
       .then(data => {
         if(data){
           if(this.page == 1)
@@ -177,17 +249,43 @@ struct Home {
               Column(){
                 // 火焰传感器 & 烟雾传感器
                 if(index == 0 || index == 1) {
-                  // 状态显示
-                  Text(`${getStatusText(item.status)}`)
-                    .fontColor(getStatusColor(item.status))
-                    .fontSize(this.dpi / 4)
-                    .fontWeight(FontWeight.Bold)
-                    .padding({top: '3%'})
-                  // 数据显示
-                  Text(String(item.value))
-                    .fontSize(this.dpi / 4)
-                    .fontColor(getStatusColor(item.status))
-                    .padding({top: '2%'})
+                  Row() {
+                    Stack() {
+                      Row() {
+                        Column() {
+                          // 状态显示
+                          Text(`${getStatusText(item.status)}`)
+                            .fontColor(getStatusColor(item.status))
+                            .fontSize(this.dpi / 4)
+                            .fontWeight(FontWeight.Bold)
+                          // 数据显示
+                          Text(String(item.value))
+                            .fontSize(this.dpi / 4)
+                            .fontColor(getStatusColor(item.status))
+                            .padding({top: '2%'})
+                        }
+                      }
+                      .width('100%')
+                      .justifyContent(FlexAlign.Center)
+
+                      Row() {
+                        Button({ type: ButtonType.Circle, stateEffect: false })
+                          .height(this.dpi / 4).width(this.dpi / 4)
+                          .backgroundColor('#00000000')
+                          .backgroundImage($r('app.media.ic_public_settings'))
+                          .backgroundImageSize({ width: '100%', height: '100%' })
+                          .onClick((isClick) => {
+                            // 弹窗
+                            if(index == 1) this.controller_dialog1.open()
+                            else this.controller_dialog2.open()
+                          })
+                      }
+                      .width('80%')
+                      .justifyContent(FlexAlign.End)
+                    }
+                  }
+                  .width('100%')
+                  .padding({top: '3%'})
                 }
                 // 温湿度传感器
                 else if(index == 2 || index == 3) {
@@ -204,17 +302,111 @@ struct Home {
                       .padding('5%')
                   }
                 }
-                // 舵机 & 蜂鸣器
-                else {
-                  // 状态显示
-                  Text(`${getStatusText(item.status)}`)
-                    .fontColor(getStatusColor(item.status))
-                    .fontSize(this.dpi / 3)
-                    .fontWeight(FontWeight.Bold)
-                    .padding({top: '3%'})
+                // 舵机
+                else if(index == 4){
+                  Row() {
+                    Stack() {
+                      // 状态显示
+                      Row() {
+                        Text(`${getStatusText(item.status)}`)
+                          .fontColor(getStatusColor(item.status))
+                          .fontSize(this.dpi / 3)
+                          .fontWeight(FontWeight.Bold)
+                          .textAlign(TextAlign.Center)
+                      }
+                      .width('100%')
+                      .justifyContent(FlexAlign.Center)
+
+                      // 舵机开关
+                      Row() {
+                        Toggle({ type: ToggleType.Switch, isOn: this.pwm1_start })
+                          .size({ width: '35%', height: '35%' })
+                          .onChange((isChecked) => {
+                            this.pwm1_start = !this.pwm1_start
+                            if(isChecked) {
+                              prompt.showToast({
+                                message: "打开舵机", // 显示文本
+                              })
+                              try {
+                                // pwmtest.setPwmStatus(1, 90)
+                                console.log(`setPwmStatus ${isChecked}}`)
+                              }catch(err) {
+                                console.log('ERROR: setPwmStatus failed' + err)
+                              }
+                            }
+                            else {
+                              prompt.showToast({
+                                message: "关闭舵机", // 显示文本
+                              })
+                              try {
+                                // pwmtest.setPwmStatus(1, 0)
+                                console.log(`setPwmStatus ${isChecked}}`)
+                              }catch(err) {
+                                console.log('ERROR: setPwmStatus failed' + err)
+                              }
+                            }
+                          })
+                      }
+                      .width('100%')
+                      .justifyContent(FlexAlign.End)
+                    }
+                  }
+                  .width('100%')
+                  .padding({ top: '3%' })
+                }
+                else if(index == 5){
+                  Row() {
+                    Stack() {
+                      // 状态显示
+                      Row() {
+                        Text(`${getStatusText(item.status)}`)
+                          .fontColor(getStatusColor(item.status))
+                          .fontSize(this.dpi / 3)
+                          .fontWeight(FontWeight.Bold)
+                          .textAlign(TextAlign.Center)
+                      }
+                      .width('100%')
+                      .justifyContent(FlexAlign.Center)
+
+                      // 蜂鸣器开关
+                      Row() {
+                        Toggle({ type: ToggleType.Switch, isOn: this.pwm2_start })
+                          .size({ width: '35%', height: '35%' })
+                          .onChange((isChecked) => {
+                            this.pwm2_start = !this.pwm2_start
+                            if(isChecked) {
+                              prompt.showToast({
+                                message: "打开蜂鸣器",
+                              })
+                              try {
+                                // pwmtest.setPwmStatus(2, 90)
+                                console.log(`setPwmStatus ${isChecked}}`)
+                              }catch(err) {
+                                console.log('ERROR: setPwmStatus failed' + err)
+                              }
+                            }
+                            else {
+                              prompt.showToast({
+                                message: "关闭蜂鸣器",
+                              })
+                              try {
+                                // pwmtest.setPwmStatus(2, -90)
+                                console.log(`setPwmStatus ${isChecked}}`)
+                              }catch(err) {
+                                console.log('ERROR: setPwmStatus failed' + err)
+                              }
+                            }
+                          })
+                      }
+                      .width('100%')
+                      .justifyContent(FlexAlign.End)
+                    }
+                  }
+                  .width('100%')
+                  .padding({ top: '3%' })
                 }
               }
-              .height('65%')
+              .height('65%').width('100%')
             }
             .height('100%')
             .width('100%')
@@ -349,6 +541,41 @@ struct Home {
   }
 }
 
+@CustomDialog
+struct CustomDialogValueInput {
+  @Link inputValue: number
+  private textValue: number
+  controller?: CustomDialogController
+
+  build() {
+    Column() {
+      Text('更新警报阈值：').fontSize(20).margin({ top: 10, bottom: 10 })
+      TextInput({ placeholder: '', text: this.inputValue.toString() }).height(60).width('90%')
+        .type(InputType.Number)
+        .onChange((value: string) => {
+          this.textValue = Number(value)
+        })
+      Text('是否确认修改?').fontSize(16).margin({ bottom: 10 }).padding({top: 20})
+      Flex({ justifyContent: FlexAlign.SpaceAround }) {
+        Button('取消')
+          .onClick(() => {
+            this.controller.close()
+          }).backgroundColor(0xffffff).fontColor(Color.Black)
+        Button('确认')
+          .onClick(() => {
+            if (this.controller != undefined) {
+              this.inputValue = this.textValue
+              this.controller.close()
+              prompt.showToast({
+                message: `成功更新警报阈值为${this.inputValue}`,
+              })
+            }
+          }).backgroundColor(0xffffff).fontColor(Color.Red)
+      }.margin({ bottom: 10 })
+    }.borderRadius(10)
+  }
+}
+
 function getTextColor(x: number){
   if(x == 3)
     return Color.Red
@@ -357,21 +584,14 @@ function getTextColor(x: number){
 
   return Color.Yellow
 }
-
 function getStatusText(x: number){
   if(x == 1) return '异常'
   if(x == 0) return '正常'
 }
-
 function getStatusColor(x: number){
   if(x == 1) return Color.Red
   if(x == 0) return Color.Green
 }
-
-function getRandomNumber(minNum: number, maxNum: number): number{
-  return Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
-}
-
 function getTimeString(): any {
   const promise = systemDateTime.getCurrentTime(false)
   return promise.then(timestamp => {
@@ -395,4 +615,133 @@ function getTimeString(): any {
   }).catch(err => {
     throw err
   })
+}
+function getRandomNumber(minNum: number, maxNum: number): number{
+  return Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
+}
+
+// 函数：读取温湿度数据
+function readTemperatureAndHumidity() {
+  // 调用传感器软重启函数
+  const softResetResult = i2cnapidemo.SoftReset();
+  console.log('Sensor Soft Reset Result:', softResetResult);
+
+  // 设置传感器测量模式
+  const mps = 2; // 2Hz
+  const repeatability = 1; // 中刷新率
+  const modeSetResult = i2cnapidemo.ModeSet(mps, repeatability);
+  console.log('Sensor Mode Set Result:', modeSetResult);
+
+  // 读取温湿度数据
+  const readDataResult = i2cnapidemo.ReadData();
+  console.log('Read Data Result:', readDataResult);
+
+  // 使用下列三个接口时必须先调用ReadData
+  if (readDataResult === 0) {
+    // 读取摄氏温度
+    const temperatureC = i2cnapidemo.ReadTemperatureC();
+
+    // 读取华氏温度
+    const temperatureF = i2cnapidemo.ReadTemperatureF();
+
+    // 读取湿度
+    const humidity = i2cnapidemo.ReadHumidity();
+
+    return {
+      temperatureC,
+      temperatureF,
+      humidity
+    };
+  } else {
+    console.log('Failed to read data. Please check the sensor connection and try again.');
+    return null;
+  }
+}
+function getPPMValue() {
+  // 获取 ADC 值
+  let adcValue = 20
+  try {
+    adcValue = adc_napi.sync_get_adc_value1();
+  }catch (err) {
+    console.log('ERROR: sync_get_adc_value1 failed.');
+    return false
+  }
+
+  // 检查是否需要权限
+  if (adcValue < 0) {
+    let permissionGranted = adc_napi.sync_get_permission1();
+
+    // 检查权限获取结果
+    if (!permissionGranted) {
+      console.error("无法获取 ADC 值并且权限获取失败");
+      return null; // 返回 null 表示无法获取 ppm 值
+    }
+
+    // 再次尝试获取 ADC 值
+    try {
+      adcValue = adc_napi.sync_get_adc_value1();
+    }catch (err) {
+      console.log('ERROR: sync_get_adc_value1 failed.');
+      return false
+    }
+
+    // 检查是否成功获取 ADC 值
+    if (adcValue < 0) {
+      console.error("无法获取 ADC 值");
+      return null; // 返回 null 表示无法获取 ppm 值
+    }
+  }
+
+  // 计算电压值（伏特）
+  let voltage = adcValue * (3.3 / 4096);
+
+  // 使用特定的公式将电压转换为 ppm 值
+  // 这里使用一个简单的示例，实际上应该根据传感器的特性来计算 ppm 值
+  let ppmValue = voltage * 1; // 假设一个简单的线性关系
+
+  return ppmValue;
+}
+function getFIREValue() {
+  // 获取 ADC 值
+  let adcValue = 20
+  try {
+    adcValue = adc_napi.sync_get_adc_value1();
+  }catch (err) {
+    console.log('ERROR: sync_get_adc_value1 failed.');
+    return false
+  }
+
+  // 检查是否需要权限
+  if (adcValue < 0) {
+    let permissionGranted = adc_napi.sync_get_permission2();
+
+    // 检查权限获取结果
+    if (!permissionGranted) {
+      console.error("无法获取 ADC 值并且权限获取失败");
+      return null; // 返回 null 表示无法获取 ppm 值
+    }
+
+    // 再次尝试获取 ADC 值
+    try {
+      adcValue = adc_napi.sync_get_adc_value1();
+    }catch (err) {
+      console.log('ERROR: sync_get_adc_value1 failed.');
+      return false
+    }
+
+    // 检查是否成功获取 ADC 值
+    if (adcValue < 0) {
+      console.error("无法获取 ADC 值");
+      return null; // 返回 null 表示无法获取 fire 值
+    }
+  }
+
+  // 计算电压值（伏特）
+  let voltage = adcValue * (3.3 / 4096);
+
+  // 使用特定的公式将电压转换为 fire 值
+  // 这里使用一个简单的示例，实际上应该根据传感器的特性来计算 fire 值
+  let fireValue = voltage * 1; // 假设一个简单的线性关系
+
+  return fireValue;
 }
