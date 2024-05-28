@@ -17,6 +17,8 @@ struct Home {
   @State pwm2_start :boolean = false
   @State flameSensorThreshold: number = 10
   @State smokeSensorThreshold: number = 10
+  @State temperatureThreshold: number = 10
+  @State humidityThreshold:    number = 10
 
   private controller_tabs : TabsController = new TabsController()
   private controller_dialog1: CustomDialogController = new CustomDialogController({
@@ -41,14 +43,7 @@ struct Home {
   private indexOffset: number = 0
 
   // 测试用数据
-  private testData: any[6] = [
-    {"deviceID": 0, "value": 50, "status": 0},
-    {"deviceID": 1, "value": 50, "status": 0},
-    {"deviceID": 2, "value": 50, "status": 0},
-    {"deviceID": 3, "value": 50, "status": 0},
-    {"deviceID": 4, "value": 50, "status": 0},
-    {"deviceID": 5, "value": 50, "status": 0},
-  ]
+  private testData: any[6] = []
   private gridArr: string[] = ['烟雾传感器', '火焰传感器', '温度传感器', '湿度传感器', '舵机', '蜂鸣器']
 
   aboutToAppear() {
@@ -74,46 +69,55 @@ struct Home {
   }
 
   update() {
+    this.testData.clear()
 
-    // 循环处理六个网格的数据
+    // 获取ppm(烟雾浓度)
+    const ppmValue_f = getPPMValue()
+    if(ppmValue_f){
+      const ppmValue = ppmValue_f
+      const ppmValueString = ppmValue_f.toFixed(3)
+      const deviceStatus = ppmValue > this.flameSensorThreshold
+      if(deviceStatus) {
+        this.addData('2', '检测到可燃气体，二级警报!')
+      }
+      this.testData.push({"deviceName": "烟雾传感器", "value": ppmValueString, "status": deviceStatus})
+    }
+
+    // 获取火焰传感器 adc值
+    const fireValue_f = getFIREValue();
+    if(fireValue_f){
+      const fireValue = fireValue_f
+      const fireValueString = fireValue_f.toFixed(3)
+      const deviceStatus = fireValue > this.smokeSensorThreshold
+      if(deviceStatus) {
+        this.addData('2', '检测到火焰，一级警报!')
+      }
+      this.testData.push({"deviceName": "火焰传感器", "value": fireValueString, "status": deviceStatus})
+    }
+
+    // 温湿度
+    const sensorData_f = readTemperatureAndHumidity()
+    if(sensorData_f) {
+      const temperatureValue = sensorData_f.temperatureC
+      const temperatureValueString = sensorData_f.temperatureC.toFixed(3)
+      const deviceStatus1 = temperatureValue > this.temperatureThreshold
+      if(deviceStatus1) {
+        this.addData('3', `温度高于${this.temperatureThreshold}，三级警报!`)
+      }
+      this.testData.push({"deviceName": "温度传感器", "value": temperatureValueString, "status": deviceStatus1})
+
+      const humidityValue = sensorData_f.humidity
+      const humidityValueString = sensorData_f.humidity.toFixed(3)
+      const deviceStatus2 = humidityValue < this.humidityThreshold
+      if(deviceStatus2) {
+        this.addData('3', `湿度低于${this.humidityThreshold}，三级警报!`)
+      }
+      this.testData.push({"deviceName": "湿度传感器", "value": humidityValueString, "status": deviceStatus2})
+    }
+
+    // 随机数模型
     for (let i = 0; i < 6; i++) {
-      const randNum = getRandomNumber(1, 103);
-      this.testData[i].value = randNum;
-
-      // 获取温度、湿度
-      const sensorData = readTemperatureAndHumidity();
-      if(sensorData!=null){
-        // 温度
-        if(i==2){
-          this.testData[i].value = sensorData.temperatureC.toFixed(3);
-        }
-        // 湿度
-        if(i==3){
-          this.testData[i].value = sensorData.humidity.toFixed(3);
-        }
-      }
-      // 获取ppm(烟雾浓度)
-      const ppmValue_f = getPPMValue();
-
-      if(ppmValue_f){
-        const ppmValue = ppmValue_f.toFixed(3)
-        // 烟雾浓度
-        if(i==0){
-          this.testData[i].value = ppmValue;
-        }
-      }
-
-      // 获取火焰传感器 adc值
-      const fireValue_f = getFIREValue();
-      if(fireValue_f){
-        const fireValue = fireValue_f.toFixed(3)
-        // 火焰adc
-        if(i==1){
-          this.testData[i].value = fireValue;
-        }
-      }
-
-      // 计算警报等级
+      const randNum = getRandomNumber(1, 100)
       const lv = Math.floor((randNum - 88) / 4);
 
       // 如果警报等级小于1，将状态设为0
@@ -129,34 +133,41 @@ struct Home {
             date: time,
             level: `${lv}`,
             info: `${this.gridArr[i]}发出${lv}级警报！`
-          };
+          }
           // 插入数据并在插入成功后更新列表
           insertData(getContext(this), item).then(res => {
             console.log(`update: ${JSON.stringify(item)}`);
             this.indexOffset++
             if (res) this.list.unshift(item)
             else console.log(`update error`)
-          });
-        });
+          })
+        })
       }
     }
 
-    this.gridData = this.testData;
+    this.gridData = this.testData
   }
 
-  addData() {
-    for(let i = 0; i < 20; i++){
-      getTimeString().then(time => {
-        let level = getRandomNumber(1, 3)
-        const item = {
-          date: time,
-          level: `${level}`,
-          info: `${this.gridArr[getRandomNumber(0, 5)]}发出${level}级警报！` }
-        insertData(getContext(this), item).then(res => {
-          this.query()
-        })
+  addData(level: string, infoString: string) {
+    getTimeString().then(time => {
+      const item = {
+        date: time,
+        level: level.toString(),
+        info: infoString
+      }
+      insertData(getContext(this), item).then(res => {
+        AlertDialog.show(
+          {
+            title: '警告!',
+            message: infoString,
+            autoCancel: true,
+            alignment: DialogAlignment.Bottom,
+            offset: { dx: 0, dy: -20 },
+            gridCount: 3
+          }
+        )
       })
-    }
+    })
   }
 
   query() {
@@ -654,7 +665,7 @@ function readTemperatureAndHumidity() {
     };
   } else {
     console.log('Failed to read data. Please check the sensor connection and try again.');
-    return null;
+    return false;
   }
 }
 function getPPMValue() {
