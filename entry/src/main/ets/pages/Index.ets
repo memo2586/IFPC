@@ -8,17 +8,23 @@ import adc_napi from '@ohos.adc_napi';
 // @ts-ignore
 import pwmtest from '@ohos.pwmtest';
 import prompt from '@ohos.prompt';
+import FaultLogger from '@ohos.faultLogger';
 
 @Entry
 @Component
 struct Home {
 
+  @State systemStatus: number = 0
   @State pwm1_start :boolean = false
   @State pwm2_start :boolean = false
   @State flameSensorThreshold: number = 10
+  private flameSensorStatus: Boolean = false
   @State smokeSensorThreshold: number = 10
-  @State temperatureThreshold: number = 10
+  private smokeSensorStatus: Boolean = false
+  @State temperatureThreshold: number = 30
+  private temperatureStatus: Boolean = false
   @State humidityThreshold:    number = 10
+  private humidityStatus:    Boolean = false
 
   private controller_tabs : TabsController = new TabsController()
   private controller_dialog1: CustomDialogController = new CustomDialogController({
@@ -33,18 +39,29 @@ struct Home {
       inputValue: $smokeSensorThreshold,
     })
   })
+  private controller_dialog3: CustomDialogController = new CustomDialogController({
+    builder: CustomDialogValueInput({
+      textValue: this.temperatureThreshold,
+      inputValue: $temperatureThreshold,
+    })
+  })
+  private controller_dialog4: CustomDialogController = new CustomDialogController({
+    builder: CustomDialogValueInput({
+      textValue: this.humidityThreshold,
+      inputValue: $humidityThreshold,
+    })
+  })
   private displayClass: display.Display | null = null
   private dpi: number = 160
 
   @State list: Array<any> = []
-  @State gridData: any[6] = []
+  @State gridData: any = []
   @State page: number = 1
   private pageSize: number = 20
   private indexOffset: number = 0
 
   // 测试用数据
-  private testData: any[6] = []
-  private gridArr: string[] = ['烟雾传感器', '火焰传感器', '温度传感器', '湿度传感器', '舵机', '蜂鸣器']
+  private testData: Array<any> = []
 
   aboutToAppear() {
     this.init()
@@ -69,7 +86,9 @@ struct Home {
   }
 
   update() {
-    this.testData.clear()
+    while(this.testData.length > 0) {
+      this.testData.pop()
+    }
 
     // 获取ppm(烟雾浓度)
     const ppmValue_f = getPPMValue()
@@ -77,8 +96,12 @@ struct Home {
       const ppmValue = ppmValue_f
       const ppmValueString = ppmValue_f.toFixed(3)
       const deviceStatus = ppmValue > this.flameSensorThreshold
-      if(deviceStatus) {
+      if(deviceStatus && !this.smokeSensorStatus) {
+        this.smokeSensorStatus = true
         this.addData('2', '检测到可燃气体，二级警报!')
+      }
+      else if(!deviceStatus && this.smokeSensorStatus) {
+        this.smokeSensorStatus = false
       }
       this.testData.push({"deviceName": "烟雾传感器", "value": ppmValueString, "status": deviceStatus})
     }
@@ -89,8 +112,12 @@ struct Home {
       const fireValue = fireValue_f
       const fireValueString = fireValue_f.toFixed(3)
       const deviceStatus = fireValue > this.smokeSensorThreshold
-      if(deviceStatus) {
+      if(deviceStatus && !this.flameSensorStatus) {
+        this.flameSensorStatus = true
         this.addData('2', '检测到火焰，一级警报!')
+      }
+      else if(!deviceStatus && this.flameSensorStatus) {
+        this.flameSensorStatus = false
       }
       this.testData.push({"deviceName": "火焰传感器", "value": fireValueString, "status": deviceStatus})
     }
@@ -99,52 +126,41 @@ struct Home {
     const sensorData_f = readTemperatureAndHumidity()
     if(sensorData_f) {
       const temperatureValue = sensorData_f.temperatureC
-      const temperatureValueString = sensorData_f.temperatureC.toFixed(3)
+      const temperatureValueString = temperatureValue.toFixed(3)
       const deviceStatus1 = temperatureValue > this.temperatureThreshold
-      if(deviceStatus1) {
+      if(deviceStatus1 && !this.temperatureStatus) {
+        this.temperatureStatus = true
         this.addData('3', `温度高于${this.temperatureThreshold}，三级警报!`)
+      }
+      else if(!deviceStatus1 && this.temperatureStatus) {
+        this.temperatureStatus = false
       }
       this.testData.push({"deviceName": "温度传感器", "value": temperatureValueString, "status": deviceStatus1})
 
       const humidityValue = sensorData_f.humidity
       const humidityValueString = sensorData_f.humidity.toFixed(3)
       const deviceStatus2 = humidityValue < this.humidityThreshold
-      if(deviceStatus2) {
+      if(deviceStatus2 && !this.humidityStatus) {
+        this.humidityStatus = true
         this.addData('3', `湿度低于${this.humidityThreshold}，三级警报!`)
+      }
+      else if(!deviceStatus2 && this.humidityStatus) {
+        this.humidityStatus = false
       }
       this.testData.push({"deviceName": "湿度传感器", "value": humidityValueString, "status": deviceStatus2})
     }
 
-    // 随机数模型
-    for (let i = 0; i < 6; i++) {
-      const randNum = getRandomNumber(1, 100)
-      const lv = Math.floor((randNum - 88) / 4);
+    this.testData.push({"deviceName": "舵机", "value": 'none', "status": 0})
+    this.testData.push({"deviceName": "蜂鸣器", "value": 'none', "status": 0})
 
-      // 如果警报等级小于1，将状态设为0
-      if (lv < 1) {
-        this.testData[i].status = 0;
-      } else {
-        // 否则，设置状态为1，并获取时间字符串
-        this.testData[i].value = randNum;
-        this.testData[i].status = 1;
-        getTimeString().then(time => {
-          // 构造警报信息对象
-          const item = {
-            date: time,
-            level: `${lv}`,
-            info: `${this.gridArr[i]}发出${lv}级警报！`
-          }
-          // 插入数据并在插入成功后更新列表
-          insertData(getContext(this), item).then(res => {
-            console.log(`update: ${JSON.stringify(item)}`);
-            this.indexOffset++
-            if (res) this.list.unshift(item)
-            else console.log(`update error`)
-          })
-        })
-      }
-    }
+    console.log(JSON.stringify(this.testData))
 
+    // 更新主页警告状态
+    if(this.flameSensorStatus) this.systemStatus = 1
+    else if(this.smokeSensorStatus) this.systemStatus = 2
+    else if(this.temperatureStatus || this.humidityStatus) this.systemStatus = 3
+    else this.systemStatus = 0
+    // 更新数据
     this.gridData = this.testData
   }
 
@@ -156,6 +172,12 @@ struct Home {
         info: infoString
       }
       insertData(getContext(this), item).then(res => {
+        // 更新列表
+        console.log(`update: ${JSON.stringify(item)}`);
+        this.indexOffset++
+        if (res) this.list.unshift(item)
+        else console.log(`update error`)
+        // 弹窗警告
         AlertDialog.show(
           {
             title: '警告!',
@@ -250,7 +272,7 @@ struct Home {
         ForEach(this.gridData, (item, index) => {
           GridItem(){
             Column(){
-              Text(`${this.gridArr[item.deviceID]}`)
+              Text(`${item.deviceName}`)
                 .fontSize(this.dpi / 5)
                 .fontColor(Color.Black)
                 .textAlign(TextAlign.Center)
@@ -260,161 +282,142 @@ struct Home {
               Column(){
                 // 火焰传感器 & 烟雾传感器
                 if(index == 0 || index == 1) {
-                  Row() {
-                    Stack() {
-                      Row() {
-                        Column() {
-                          // 状态显示
-                          Text(`${getStatusText(item.status)}`)
-                            .fontColor(getStatusColor(item.status))
-                            .fontSize(this.dpi / 4)
-                            .fontWeight(FontWeight.Bold)
-                          // 数据显示
-                          Text(String(item.value))
-                            .fontSize(this.dpi / 4)
-                            .fontColor(getStatusColor(item.status))
-                            .padding({top: '2%'})
-                        }
-                      }
-                      .width('100%')
-                      .justifyContent(FlexAlign.Center)
-
-                      Row() {
-                        Button({ type: ButtonType.Circle, stateEffect: false })
-                          .height(this.dpi / 4).width(this.dpi / 4)
-                          .backgroundColor('#00000000')
-                          .backgroundImage($r('app.media.ic_public_settings'))
-                          .backgroundImageSize({ width: '100%', height: '100%' })
-                          .onClick((isClick) => {
-                            // 弹窗
-                            if(index == 1) this.controller_dialog1.open()
-                            else this.controller_dialog2.open()
-                          })
-                      }
-                      .width('80%')
-                      .justifyContent(FlexAlign.End)
+                  Stack() {
+                    Column() {
+                      // 状态显示
+                      Text(`${getStatusText(item.status)}`)
+                        .fontColor(getStatusColor(item.status))
+                        .fontSize(this.dpi / 4)
+                        .fontWeight(FontWeight.Bold)
+                      // 数据显示
+                      Text(String(item.value))
+                        .fontSize(this.dpi / 4)
+                        .fontColor(getStatusColor(item.status))
+                        .padding({top: '2%'})
                     }
+                    .width('100%')
+
+                    Column() {
+                      // 阈值设置
+                      Button({ type: ButtonType.Circle, stateEffect: false })
+                        .height(this.dpi / 4).width(this.dpi / 4)
+                        .backgroundColor('#00000000')
+                        .backgroundImage($r('app.media.ic_public_settings'))
+                        .backgroundImageSize({ width: '100%', height: '100%' })
+                        .onClick((isClick) => {
+                          // 弹窗
+                          if(index == 1) this.controller_dialog1.open()
+                          else this.controller_dialog2.open()
+                        })
+                    }
+                    .width('90%').height('90%')
+                    .justifyContent(FlexAlign.End)
+                    .alignItems(HorizontalAlign.End)
                   }
-                  .width('100%')
-                  .padding({top: '3%'})
                 }
                 // 温湿度传感器
                 else if(index == 2 || index == 3) {
-                  if(index == 2) {
-                    Text(`${item.value}°C`)
-                      .fontSize(this.dpi / 3)
-                      .fontColor('#708090')
-                      .padding('5%')
-                  }
-                  else {
-                    Text(`${item.value}%`)
-                      .fontSize(this.dpi / 3)
-                      .fontColor('#708090')
-                      .padding('5%')
+                  Stack() {
+                    if(index == 2) {
+                      Text(`${item.value}°C`)
+                        .fontSize(this.dpi / 3)
+                        .fontColor('#708090')
+                        .padding('5%')
+                    }
+                    else {
+                      Text(`${item.value}%`)
+                        .fontSize(this.dpi / 3)
+                        .fontColor('#708090')
+                        .padding('5%')
+                    }
+                    Column() {
+                      // 阈值设置
+                      Button({ type: ButtonType.Circle, stateEffect: false })
+                        .height(this.dpi / 4).width(this.dpi / 4)
+                        .backgroundColor('#00000000')
+                        .backgroundImage($r('app.media.ic_public_settings'))
+                        .backgroundImageSize({ width: '100%', height: '100%' })
+                        .onClick((isClick) => {
+                          // 弹窗
+                          if(index == 2) this.controller_dialog3.open()
+                          else this.controller_dialog4.open()
+                        })
+                    }
+                    .width('90%').height('90%')
+                    .justifyContent(FlexAlign.End)
+                    .alignItems(HorizontalAlign.End)
                   }
                 }
                 // 舵机
                 else if(index == 4){
+                  // 舵机开关
                   Row() {
-                    Stack() {
-                      // 状态显示
-                      Row() {
-                        Text(`${getStatusText(item.status)}`)
-                          .fontColor(getStatusColor(item.status))
-                          .fontSize(this.dpi / 3)
-                          .fontWeight(FontWeight.Bold)
-                          .textAlign(TextAlign.Center)
-                      }
-                      .width('100%')
-                      .justifyContent(FlexAlign.Center)
-
-                      // 舵机开关
-                      Row() {
-                        Toggle({ type: ToggleType.Switch, isOn: this.pwm1_start })
-                          .size({ width: '35%', height: '35%' })
-                          .onChange((isChecked) => {
-                            this.pwm1_start = !this.pwm1_start
-                            if(isChecked) {
-                              prompt.showToast({
-                                message: "打开舵机", // 显示文本
-                              })
-                              try {
-                                // pwmtest.setPwmStatus(1, 90)
-                                console.log(`setPwmStatus ${isChecked}}`)
-                              }catch(err) {
-                                console.log('ERROR: setPwmStatus failed' + err)
-                              }
-                            }
-                            else {
-                              prompt.showToast({
-                                message: "关闭舵机", // 显示文本
-                              })
-                              try {
-                                // pwmtest.setPwmStatus(1, 0)
-                                console.log(`setPwmStatus ${isChecked}}`)
-                              }catch(err) {
-                                console.log('ERROR: setPwmStatus failed' + err)
-                              }
-                            }
+                    Toggle({ type: ToggleType.Switch, isOn: this.pwm1_start })
+                      .size({ width: '35%', height: '35%' })
+                      .onChange((isChecked) => {
+                        this.pwm1_start = !this.pwm1_start
+                        if(isChecked) {
+                          prompt.showToast({
+                            message: "打开舵机", // 显示文本
                           })
-                      }
-                      .width('100%')
-                      .justifyContent(FlexAlign.End)
-                    }
+                          try {
+                            pwmtest.setPwmStatus(1, 90)
+                            console.log(`setPwmStatus ${isChecked}}`)
+                          }catch(err) {
+                            console.log('ERROR: setPwmStatus failed' + err)
+                          }
+                        }
+                        else {
+                          prompt.showToast({
+                            message: "关闭舵机", // 显示文本
+                          })
+                          try {
+                            pwmtest.setPwmStatus(1, 0)
+                            console.log(`setPwmStatus ${isChecked}}`)
+                          }catch(err) {
+                            console.log('ERROR: setPwmStatus failed' + err)
+                          }
+                        }
+                      })
                   }
                   .width('100%')
                   .padding({ top: '3%' })
+                  .justifyContent(FlexAlign.Center)
                 }
                 else if(index == 5){
+                  // 蜂鸣器开关
                   Row() {
-                    Stack() {
-                      // 状态显示
-                      Row() {
-                        Text(`${getStatusText(item.status)}`)
-                          .fontColor(getStatusColor(item.status))
-                          .fontSize(this.dpi / 3)
-                          .fontWeight(FontWeight.Bold)
-                          .textAlign(TextAlign.Center)
-                      }
-                      .width('100%')
-                      .justifyContent(FlexAlign.Center)
-
-                      // 蜂鸣器开关
-                      Row() {
-                        Toggle({ type: ToggleType.Switch, isOn: this.pwm2_start })
-                          .size({ width: '35%', height: '35%' })
-                          .onChange((isChecked) => {
-                            this.pwm2_start = !this.pwm2_start
-                            if(isChecked) {
-                              prompt.showToast({
-                                message: "打开蜂鸣器",
-                              })
-                              try {
-                                // pwmtest.setPwmStatus(2, 90)
-                                console.log(`setPwmStatus ${isChecked}}`)
-                              }catch(err) {
-                                console.log('ERROR: setPwmStatus failed' + err)
-                              }
-                            }
-                            else {
-                              prompt.showToast({
-                                message: "关闭蜂鸣器",
-                              })
-                              try {
-                                // pwmtest.setPwmStatus(2, -90)
-                                console.log(`setPwmStatus ${isChecked}}`)
-                              }catch(err) {
-                                console.log('ERROR: setPwmStatus failed' + err)
-                              }
-                            }
+                    Toggle({ type: ToggleType.Switch, isOn: this.pwm2_start })
+                      .size({ width: '35%', height: '35%' })
+                      .onChange((isChecked) => {
+                        this.pwm2_start = !this.pwm2_start
+                        if(isChecked) {
+                          prompt.showToast({
+                            message: "打开蜂鸣器",
                           })
-                      }
-                      .width('100%')
-                      .justifyContent(FlexAlign.End)
-                    }
+                          try {
+                            pwmtest.setPwmStatus(2, 90)
+                            console.log(`setPwmStatus ${isChecked}}`)
+                          }catch(err) {
+                            console.log('ERROR: setPwmStatus failed' + err)
+                          }
+                        }
+                        else {
+                          prompt.showToast({
+                            message: "关闭蜂鸣器",
+                          })
+                          try {
+                            pwmtest.setPwmStatus(2, -90)
+                            console.log(`setPwmStatus ${isChecked}}`)
+                          }catch(err) {
+                            console.log('ERROR: setPwmStatus failed' + err)
+                          }
+                        }
+                      })
                   }
                   .width('100%')
                   .padding({ top: '3%' })
+                  .justifyContent(FlexAlign.Center)
                 }
               }
               .height('65%').width('100%')
@@ -478,23 +481,49 @@ struct Home {
             .fontColor(Color.Black)
             .fontSize(this.dpi / 4)
             .textAlign(TextAlign.Center)
-          Text('正常')
-            .fontColor(Color.Green)
+          Text(getStatusText(this.systemStatus))
+            .fontColor(getTextColor(this.systemStatus))
             .fontSize(this.dpi / 2)
             .fontWeight(FontWeight.Bold)
             .padding({top: '5%'})
         }
-        .backgroundColor('#98ff98')
+        .backgroundColor(getStatusBackgroundColor(this.systemStatus))
         .width('90%')
         .height('50%')
         .justifyContent(FlexAlign.Center)
         .alignItems(HorizontalAlign.Center)
         .borderRadius(10)
         .margin( {top: '2%'} )
+
         // 报警按钮
         Button('一键报警', { type: ButtonType.Normal, stateEffect: true })
           .onClick(() => {
             // 报警弹窗
+            AlertDialog.show(
+              {
+                title: '警告',
+                message: '即将报警，是否确认？',
+                autoCancel: true,
+                alignment: DialogAlignment.Bottom,
+                gridCount: 4,
+                offset: { dx: 0, dy: -20 },
+                primaryButton: {
+                  value: '取消',
+                  action: () => {
+                    console.info('取消报警')
+                  }
+                },
+                secondaryButton: {
+                  value: '确认',
+                  action: () => {
+                    console.info('已报警')
+                  }
+                },
+                cancel: () => {
+                  console.info('Closed callbacks')
+                }
+              }
+            )
           })
           .width('90%')
           .height('35%')
@@ -588,16 +617,22 @@ struct CustomDialogValueInput {
 }
 
 function getTextColor(x: number){
-  if(x == 3)
+  if(x == 1)
     return Color.Red
   if(x == 2)
-    return Color.Orange
-
-  return Color.Yellow
+    return '#ffca3230'
+  if(x == 3)
+    return '#c55c2d'
+  else
+    return Color.Green
+}
+function getStatusBackgroundColor(x: number) {
+  if(x > 0) return '#dfea50'
+  else return '#98ff98'
 }
 function getStatusText(x: number){
-  if(x == 1) return '异常'
   if(x == 0) return '正常'
+  else return '异常'
 }
 function getStatusColor(x: number){
   if(x == 1) return Color.Red
