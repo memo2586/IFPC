@@ -17,13 +17,13 @@ struct Home {
   @State systemStatus: number = 0
   @State pwm1_start :boolean = false
   @State pwm2_start :boolean = false
-  @State flameSensorThreshold: number = 10
+  @State flameSensorThreshold: number = 23
   private flameSensorStatus: Boolean = false
-  @State smokeSensorThreshold: number = 10
+  @State smokeSensorThreshold: number = 16
   private smokeSensorStatus: Boolean = false
-  @State temperatureThreshold: number = 30
+  @State temperatureThreshold: number = 50
   private temperatureStatus: Boolean = false
-  @State humidityThreshold:    number = 10
+  @State humidityThreshold:    number = 30
   private humidityStatus:    Boolean = false
 
   private controller_tabs : TabsController = new TabsController()
@@ -95,7 +95,7 @@ struct Home {
     if(ppmValue_f){
       const ppmValue = ppmValue_f
       const ppmValueString = ppmValue_f.toFixed(3)
-      const deviceStatus = ppmValue > this.flameSensorThreshold
+      const deviceStatus = ppmValue > this.smokeSensorThreshold
       if(deviceStatus && !this.smokeSensorStatus) {
         this.smokeSensorStatus = true
         this.addData('2', '检测到可燃气体，二级警报!')
@@ -111,13 +111,17 @@ struct Home {
     if(fireValue_f){
       const fireValue = fireValue_f
       const fireValueString = fireValue_f.toFixed(3)
-      const deviceStatus = fireValue > this.smokeSensorThreshold
+      const deviceStatus = fireValue < this.flameSensorThreshold
       if(deviceStatus && !this.flameSensorStatus) {
         this.flameSensorStatus = true
-        this.addData('2', '检测到火焰，一级警报!')
+        this.addData('1', '检测到火焰，一级警报!')
+        // 自动开启舵机
+        this.pwm1_start = true
+
       }
       else if(!deviceStatus && this.flameSensorStatus) {
         this.flameSensorStatus = false
+        this.pwm1_start = false
       }
       this.testData.push({"deviceName": "火焰传感器", "value": fireValueString, "status": deviceStatus})
     }
@@ -355,7 +359,7 @@ struct Home {
                     Toggle({ type: ToggleType.Switch, isOn: this.pwm1_start })
                       .size({ width: '35%', height: '35%' })
                       .onChange((isChecked) => {
-                        this.pwm1_start = !this.pwm1_start
+                        this.pwm1_start = isChecked
                         if(isChecked) {
                           prompt.showToast({
                             message: "打开舵机", // 显示文本
@@ -743,7 +747,7 @@ function getPPMValue() {
 
   // 使用特定的公式将电压转换为 ppm 值
   // 这里使用一个简单的示例，实际上应该根据传感器的特性来计算 ppm 值
-  let ppmValue = voltage * 1; // 假设一个简单的线性关系
+  let ppmValue = voltage * 10; // 假设一个简单的线性关系
 
   return ppmValue;
 }
@@ -751,9 +755,9 @@ function getFIREValue() {
   // 获取 ADC 值
   let adcValue = 20
   try {
-    adcValue = adc_napi.sync_get_adc_value1();
+    adcValue = adc_napi.sync_get_adc_value2();
   }catch (err) {
-    console.log('ERROR: sync_get_adc_value1 failed.');
+    console.log('ERROR: sync_get_adc_value2 failed.');
     return false
   }
 
@@ -769,9 +773,9 @@ function getFIREValue() {
 
     // 再次尝试获取 ADC 值
     try {
-      adcValue = adc_napi.sync_get_adc_value1();
+      adcValue = adc_napi.sync_get_adc_value2();
     }catch (err) {
-      console.log('ERROR: sync_get_adc_value1 failed.');
+      console.log('ERROR: sync_get_adc_value2 failed.');
       return false
     }
 
@@ -787,7 +791,7 @@ function getFIREValue() {
 
   // 使用特定的公式将电压转换为 fire 值
   // 这里使用一个简单的示例，实际上应该根据传感器的特性来计算 fire 值
-  let fireValue = voltage * 1; // 假设一个简单的线性关系
+  let fireValue = voltage * 10.; // 假设一个简单的线性关系
 
   return fireValue;
 }
