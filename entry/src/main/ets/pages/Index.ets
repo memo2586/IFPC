@@ -99,90 +99,72 @@ struct Home {
       this.devicesData.pop()
     }
 
-    // // 获取ppm(烟雾浓度)
-    // const ppmValue_f = getPPMValue()
-    // if(ppmValue_f){
-    //   const ppmValue = ppmValue_f
-    //   const ppmValueString = ppmValue_f.toFixed(3)
-    //   const deviceStatus = ppmValue > this.smokeSensorThreshold
-    //   if(deviceStatus && !this.smokeSensorStatus) {
-    //     this.smokeSensorStatus = true
-    //     this.addData('2', '检测到可燃气体，二级警报!')
-    //   }
-    //   else if(!deviceStatus && this.smokeSensorStatus) {
-    //     this.smokeSensorStatus = false
-    //   }
-    //   this.devicesData.push({"deviceName": "烟雾传感器", "value": ppmValueString, "status": deviceStatus})
-    // }
-    //
-    // // 获取火焰传感器 adc值
-    // const fireValue_f = getFIREValue();
-    // if(fireValue_f){
-    //   const fireValue = fireValue_f
-    //   const fireValueString = fireValue_f.toFixed(3)
-    //   const deviceStatus = fireValue < this.flameSensorThreshold
-    //   if(deviceStatus && !this.flameSensorStatus) {
-    //     this.flameSensorStatus = true
-    //     this.addData('1', '检测到火焰，一级警报!')
-    //     // 自动开启舵机
-    //     this.pwm1_start = true
-    //
-    //   }
-    //   else if(!deviceStatus && this.flameSensorStatus) {
-    //     this.flameSensorStatus = false
-    //     this.pwm1_start = false
-    //   }
-    //   this.devicesData.push({"deviceName": "火焰传感器", "value": fireValueString, "status": deviceStatus})
-    // }
-    //
-    // // 温湿度
-    // const sensorData_f = readTemperatureAndHumidity()
-    // if(sensorData_f) {
-    //   const temperatureValue = sensorData_f.temperatureC
-    //   const temperatureValueString = temperatureValue.toFixed(3)
-    //   const deviceStatus1 = temperatureValue > this.temperatureThreshold
-    //   if(deviceStatus1 && !this.temperatureStatus) {
-    //     this.temperatureStatus = true
-    //     this.addData('3', `温度高于${this.temperatureThreshold}，三级警报!`)
-    //   }
-    //   else if(!deviceStatus1 && this.temperatureStatus) {
-    //     this.temperatureStatus = false
-    //   }
-    //   this.devicesData.push({"deviceName": "温度传感器", "value": temperatureValueString, "status": deviceStatus1})
-    //
-    //   const humidityValue = sensorData_f.humidity
-    //   const humidityValueString = sensorData_f.humidity.toFixed(3)
-    //   const deviceStatus2 = humidityValue < this.humidityThreshold
-    //   if(deviceStatus2 && !this.humidityStatus) {
-    //     this.humidityStatus = true
-    //     this.addData('3', `湿度低于${this.humidityThreshold}，三级警报!`)
-    //   }
-    //   else if(!deviceStatus2 && this.humidityStatus) {
-    //     this.humidityStatus = false
-    //   }
-    //   this.devicesData.push({"deviceName": "湿度传感器", "value": humidityValueString, "status": deviceStatus2})
-    // }
-    //
-    // this.devicesData.push({"deviceName": "舵机", "value": 'none', "status": false})
-    // this.devicesData.push({"deviceName": "蜂鸣器", "value": 'none', "status": false})
-
-    // 无传感器测试用
-    {
-      const ppmValue = getRandomNumber(10, 25); let deviceStatus = ppmValue > this.smokeSensorThreshold;
-      if(deviceStatus) this.addData('2', '检测到可燃气体，二级警报!')
-      this.devicesData.push({"deviceName": "烟雾传感器", "value": ppmValue.toString(), "status": deviceStatus})
-      const fireValue = getRandomNumber(8, 19); deviceStatus = fireValue > this.flameSensorThreshold;
-      if(deviceStatus) this.addData('2', '检测到可燃气体，二级警报!')
-      this.devicesData.push({"deviceName": "火焰传感器", "value": fireValue.toString(), "status": deviceStatus})
-      const temperatureValue = getRandomNumber(20, 58); deviceStatus = temperatureValue > this.temperatureThreshold;
-      if(deviceStatus) this.addData('2', '检测到可燃气体，二级警报!')
-      this.devicesData.push({"deviceName": "温度传感器", "value": temperatureValue.toString(), "status": deviceStatus})
-      const humidityValue = getRandomNumber(10, 35); deviceStatus = humidityValue > this.humidityThreshold;
-      if(deviceStatus) this.addData('2', '检测到可燃气体，二级警报!')
-      this.devicesData.push({"deviceName": "湿度传感器", "value": humidityValue.toString(), "status": deviceStatus})
-      this.devicesData.push({"deviceName": "舵机", "value": 'none', "status": false})
-      this.devicesData.push({"deviceName": "蜂鸣器", "value": 'none', "status": false})
+    // 获取ppm(烟雾浓度)
+    const ppmValue_f = getPPMValue()
+    if(ppmValue_f){
+      const ppmValue = ppmValue_f
+      const ppmValueString = ppmValue_f.toFixed(3)
+      const deviceStatus = ppmValue > this.smokeSensorThreshold
+      if(deviceStatus && !this.smokeSensorStatus) {
+        this.smokeSensorStatus = true
+        this.addData('2', '检测到可燃气体，二级警报!')
+      }
+      else if(!deviceStatus && this.smokeSensorStatus) {
+        this.smokeSensorStatus = false
+      }
+      this.devicesData.push({"deviceName": "烟雾传感器", "value": ppmValueString, "status": deviceStatus})
     }
+
+    // 获取火焰传感器 adc值
+    const fireValue_f = getFIREValue();
+    if(fireValue_f){
+      const fireValue = fireValue_f
+      const fireValueString = fireValue_f.toFixed(3)
+      const deviceStatus = fireValue < this.flameSensorThreshold
+      if(deviceStatus && !this.flameSensorStatus) {
+        this.flameSensorStatus = true
+        this.addData('1', '检测到火焰，一级警报!')
+        // 自动开启舵机
+        this.pwm1_start = true
+
+      }
+      else if(!deviceStatus && this.flameSensorStatus) {
+        this.flameSensorStatus = false
+        this.pwm1_start = false
+      }
+      this.devicesData.push({"deviceName": "火焰传感器", "value": fireValueString, "status": deviceStatus})
+    }
+
+    // 温湿度
+    const sensorData_f = readTemperatureAndHumidity()
+    if(sensorData_f) {
+      const temperatureValue = sensorData_f.temperatureC
+      const temperatureValueString = temperatureValue.toFixed(3)
+      const deviceStatus1 = temperatureValue > this.temperatureThreshold
+      if(deviceStatus1 && !this.temperatureStatus) {
+        this.temperatureStatus = true
+        this.addData('3', `温度高于${this.temperatureThreshold}，三级警报!`)
+      }
+      else if(!deviceStatus1 && this.temperatureStatus) {
+        this.temperatureStatus = false
+      }
+      this.devicesData.push({"deviceName": "温度传感器", "value": temperatureValueString, "status": deviceStatus1})
+
+      const humidityValue = sensorData_f.humidity
+      const humidityValueString = sensorData_f.humidity.toFixed(3)
+      const deviceStatus2 = humidityValue < this.humidityThreshold
+      if(deviceStatus2 && !this.humidityStatus) {
+        this.humidityStatus = true
+        this.addData('3', `湿度低于${this.humidityThreshold}，三级警报!`)
+      }
+      else if(!deviceStatus2 && this.humidityStatus) {
+        this.humidityStatus = false
+      }
+      this.devicesData.push({"deviceName": "湿度传感器", "value": humidityValueString, "status": deviceStatus2})
+    }
+
+    this.devicesData.push({"deviceName": "舵机", "value": 'none', "status": false})
+    this.devicesData.push({"deviceName": "蜂鸣器", "value": 'none', "status": false})
 
     // console.log(JSON.stringify(this.devicesData))
 
@@ -691,9 +673,6 @@ function getTimeString(): any {
   }).catch(err => {
     throw err
   })
-}
-function getRandomNumber(minNum: number, maxNum: number): number{
-  return Math.floor(Math.random() * (maxNum - minNum + 1)) + minNum;
 }
 
 // 函数：读取温湿度数据
