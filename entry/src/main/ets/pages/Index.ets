@@ -8,7 +8,6 @@ import adc_napi from '@ohos.adc_napi';
 // @ts-ignore
 import pwmtest from '@ohos.pwmtest';
 import prompt from '@ohos.prompt';
-import FaultLogger from '@ohos.faultLogger';
 
 @Entry
 @Component
@@ -200,7 +199,7 @@ struct Home {
     queryData(getContext(this), this.page, this.indexOffset, this.pageSize)
       .then(data => {
         if(data){
-          if(this.page == 1)
+          if(this.page === 1)
             this.list = data
           else
             this.list = this.list.concat(data)
@@ -285,7 +284,7 @@ struct Home {
 
               Column(){
                 // 火焰传感器 & 烟雾传感器
-                if(index == 0 || index == 1) {
+                if(index === 0 || index === 1) {
                   Stack() {
                     Column() {
                       // 状态显示
@@ -310,7 +309,7 @@ struct Home {
                         .backgroundImageSize({ width: '100%', height: '100%' })
                         .onClick((isClick) => {
                           // 弹窗
-                          if(index == 1) this.controller_dialog1.open()
+                          if(index === 1) this.controller_dialog1.open()
                           else this.controller_dialog2.open()
                         })
                     }
@@ -320,9 +319,9 @@ struct Home {
                   }
                 }
                 // 温湿度传感器
-                else if(index == 2 || index == 3) {
+                else if(index === 2 || index === 3) {
                   Stack() {
-                    if(index == 2) {
+                    if(index === 2) {
                       Text(`${item.value}°C`)
                         .fontSize(this.dpi / 3)
                         .fontColor('#708090')
@@ -343,7 +342,7 @@ struct Home {
                         .backgroundImageSize({ width: '100%', height: '100%' })
                         .onClick((isClick) => {
                           // 弹窗
-                          if(index == 2) this.controller_dialog3.open()
+                          if(index === 2) this.controller_dialog3.open()
                           else this.controller_dialog4.open()
                         })
                     }
@@ -353,7 +352,7 @@ struct Home {
                   }
                 }
                 // 舵机
-                else if(index == 4){
+                else if(index === 4){
                   // 舵机开关
                   Row() {
                     Toggle({ type: ToggleType.Switch, isOn: this.pwm1_start })
@@ -388,7 +387,7 @@ struct Home {
                   .padding({ top: '3%' })
                   .justifyContent(FlexAlign.Center)
                 }
-                else if(index == 5){
+                else if(index === 5){
                   // 蜂鸣器开关
                   Row() {
                     Toggle({ type: ToggleType.Switch, isOn: this.pwm2_start })
@@ -621,11 +620,11 @@ struct CustomDialogValueInput {
 }
 
 function getTextColor(x: number){
-  if(x == 1)
+  if(x === 1)
     return Color.Red
-  if(x == 2)
+  if(x === 2)
     return '#ffca3230'
-  if(x == 3)
+  if(x === 3)
     return '#c55c2d'
   else
     return Color.Green
@@ -635,12 +634,12 @@ function getStatusBackgroundColor(x: number) {
   else return '#98ff98'
 }
 function getStatusText(x: number){
-  if(x == 0) return '正常'
+  if(x === 0) return '正常'
   else return '异常'
 }
 function getStatusColor(x: number){
-  if(x == 1) return Color.Red
-  if(x == 0) return Color.Green
+  if(x === 1) return Color.Red
+  if(x === 0) return Color.Green
 }
 function getTimeString(): any {
   const promise = systemDateTime.getCurrentTime(false)
@@ -707,6 +706,7 @@ function readTemperatureAndHumidity() {
     return false;
   }
 }
+
 function getPPMValue() {
   // 获取 ADC 值
   let adcValue = 20
