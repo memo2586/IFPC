@@ -9,6 +9,12 @@ import adc_napi from '@ohos.adc_napi';
 import pwmtest from '@ohos.pwmtest';
 import prompt from '@ohos.prompt';
 
+type device = {
+  deviceName: string;
+  value: string;
+  status: boolean;
+};
+
 @Entry
 @Component
 struct Home {
@@ -53,14 +59,12 @@ struct Home {
   private displayClass: display.Display | null = null
   private dpi: number = 160
 
-  @State list: Array<any> = []
-  @State gridData: any = []
+  @State logListData: Array<any> = []
+  private devicesData: Array<device> = []
+  @State gridData: Array<device> = []
   @State page: number = 1
   private pageSize: number = 20
   private indexOffset: number = 0
-
-  // 测试用数据
-  private testData: Array<any> = []
 
   aboutToAppear() {
     this.init()
@@ -85,8 +89,8 @@ struct Home {
   }
 
   update() {
-    while(this.testData.length > 0) {
-      this.testData.pop()
+    while(this.devicesData.length > 0) {
+      this.devicesData.pop()
     }
 
     // 获取ppm(烟雾浓度)
@@ -102,7 +106,7 @@ struct Home {
       else if(!deviceStatus && this.smokeSensorStatus) {
         this.smokeSensorStatus = false
       }
-      this.testData.push({"deviceName": "烟雾传感器", "value": ppmValueString, "status": deviceStatus})
+      this.devicesData.push({"deviceName": "烟雾传感器", "value": ppmValueString, "status": deviceStatus})
     }
 
     // 获取火焰传感器 adc值
@@ -122,7 +126,7 @@ struct Home {
         this.flameSensorStatus = false
         this.pwm1_start = false
       }
-      this.testData.push({"deviceName": "火焰传感器", "value": fireValueString, "status": deviceStatus})
+      this.devicesData.push({"deviceName": "火焰传感器", "value": fireValueString, "status": deviceStatus})
     }
 
     // 温湿度
@@ -138,7 +142,7 @@ struct Home {
       else if(!deviceStatus1 && this.temperatureStatus) {
         this.temperatureStatus = false
       }
-      this.testData.push({"deviceName": "温度传感器", "value": temperatureValueString, "status": deviceStatus1})
+      this.devicesData.push({"deviceName": "温度传感器", "value": temperatureValueString, "status": deviceStatus1})
 
       const humidityValue = sensorData_f.humidity
       const humidityValueString = sensorData_f.humidity.toFixed(3)
@@ -150,13 +154,13 @@ struct Home {
       else if(!deviceStatus2 && this.humidityStatus) {
         this.humidityStatus = false
       }
-      this.testData.push({"deviceName": "湿度传感器", "value": humidityValueString, "status": deviceStatus2})
+      this.devicesData.push({"deviceName": "湿度传感器", "value": humidityValueString, "status": deviceStatus2})
     }
 
-    this.testData.push({"deviceName": "舵机", "value": 'none', "status": 0})
-    this.testData.push({"deviceName": "蜂鸣器", "value": 'none', "status": 0})
+    this.devicesData.push({"deviceName": "舵机", "value": 'none', "status": false})
+    this.devicesData.push({"deviceName": "蜂鸣器", "value": 'none', "status": false})
 
-    console.log(JSON.stringify(this.testData))
+    console.log(JSON.stringify(this.devicesData))
 
     // 更新主页警告状态
     if(this.flameSensorStatus) this.systemStatus = 1
@@ -164,7 +168,7 @@ struct Home {
     else if(this.temperatureStatus || this.humidityStatus) this.systemStatus = 3
     else this.systemStatus = 0
     // 更新数据
-    this.gridData = this.testData
+    this.gridData = this.devicesData
   }
 
   addData(level: string, infoString: string) {
@@ -178,7 +182,7 @@ struct Home {
         // 更新列表
         console.log(`update: ${JSON.stringify(item)}`);
         this.indexOffset++
-        if (res) this.list.unshift(item)
+        if (res) this.logListData.unshift(item)
         else console.log(`update error`)
         // 弹窗警告
         AlertDialog.show(
@@ -200,9 +204,9 @@ struct Home {
       .then(data => {
         if(data){
           if(this.page === 1)
-            this.list = data
+            this.logListData = data
           else
-            this.list = this.list.concat(data)
+            this.logListData = this.logListData.concat(data)
           this.page++
         }
         else {
@@ -214,9 +218,9 @@ struct Home {
   @Builder buildLogList() {
     Row() {
       this.buildLogo()
-      if(this.list.length != 0) {
+      if(this.logListData.length != 0) {
         List({space: 20, initialIndex: 0}) {
-          ForEach(this.list, (item) => {
+          ForEach(this.logListData, (item) => {
             ListItem() {
               Row(){
                 // 警告等级数字
