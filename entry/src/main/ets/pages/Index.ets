@@ -15,6 +15,12 @@ type device = {
   status: boolean;
 };
 
+type logItem = {
+  time: string;
+  level: string;
+  info :string;
+}
+
 @Entry
 @Component
 struct Home {
@@ -59,7 +65,7 @@ struct Home {
   private displayClass: display.Display | null = null
   private dpi: number = 160
 
-  @State logListData: Array<any> = []
+  @State logListData: Array<logItem> = []
   private devicesData: Array<device> = []
   @State gridData: Array<device> = []
   @State page: number = 1
@@ -93,74 +99,92 @@ struct Home {
       this.devicesData.pop()
     }
 
-    // 获取ppm(烟雾浓度)
-    const ppmValue_f = getPPMValue()
-    if(ppmValue_f){
-      const ppmValue = ppmValue_f
-      const ppmValueString = ppmValue_f.toFixed(3)
-      const deviceStatus = ppmValue > this.smokeSensorThreshold
-      if(deviceStatus && !this.smokeSensorStatus) {
-        this.smokeSensorStatus = true
-        this.addData('2', '检测到可燃气体，二级警报!')
-      }
-      else if(!deviceStatus && this.smokeSensorStatus) {
-        this.smokeSensorStatus = false
-      }
-      this.devicesData.push({"deviceName": "烟雾传感器", "value": ppmValueString, "status": deviceStatus})
+    // // 获取ppm(烟雾浓度)
+    // const ppmValue_f = getPPMValue()
+    // if(ppmValue_f){
+    //   const ppmValue = ppmValue_f
+    //   const ppmValueString = ppmValue_f.toFixed(3)
+    //   const deviceStatus = ppmValue > this.smokeSensorThreshold
+    //   if(deviceStatus && !this.smokeSensorStatus) {
+    //     this.smokeSensorStatus = true
+    //     this.addData('2', '检测到可燃气体，二级警报!')
+    //   }
+    //   else if(!deviceStatus && this.smokeSensorStatus) {
+    //     this.smokeSensorStatus = false
+    //   }
+    //   this.devicesData.push({"deviceName": "烟雾传感器", "value": ppmValueString, "status": deviceStatus})
+    // }
+    //
+    // // 获取火焰传感器 adc值
+    // const fireValue_f = getFIREValue();
+    // if(fireValue_f){
+    //   const fireValue = fireValue_f
+    //   const fireValueString = fireValue_f.toFixed(3)
+    //   const deviceStatus = fireValue < this.flameSensorThreshold
+    //   if(deviceStatus && !this.flameSensorStatus) {
+    //     this.flameSensorStatus = true
+    //     this.addData('1', '检测到火焰，一级警报!')
+    //     // 自动开启舵机
+    //     this.pwm1_start = true
+    //
+    //   }
+    //   else if(!deviceStatus && this.flameSensorStatus) {
+    //     this.flameSensorStatus = false
+    //     this.pwm1_start = false
+    //   }
+    //   this.devicesData.push({"deviceName": "火焰传感器", "value": fireValueString, "status": deviceStatus})
+    // }
+    //
+    // // 温湿度
+    // const sensorData_f = readTemperatureAndHumidity()
+    // if(sensorData_f) {
+    //   const temperatureValue = sensorData_f.temperatureC
+    //   const temperatureValueString = temperatureValue.toFixed(3)
+    //   const deviceStatus1 = temperatureValue > this.temperatureThreshold
+    //   if(deviceStatus1 && !this.temperatureStatus) {
+    //     this.temperatureStatus = true
+    //     this.addData('3', `温度高于${this.temperatureThreshold}，三级警报!`)
+    //   }
+    //   else if(!deviceStatus1 && this.temperatureStatus) {
+    //     this.temperatureStatus = false
+    //   }
+    //   this.devicesData.push({"deviceName": "温度传感器", "value": temperatureValueString, "status": deviceStatus1})
+    //
+    //   const humidityValue = sensorData_f.humidity
+    //   const humidityValueString = sensorData_f.humidity.toFixed(3)
+    //   const deviceStatus2 = humidityValue < this.humidityThreshold
+    //   if(deviceStatus2 && !this.humidityStatus) {
+    //     this.humidityStatus = true
+    //     this.addData('3', `湿度低于${this.humidityThreshold}，三级警报!`)
+    //   }
+    //   else if(!deviceStatus2 && this.humidityStatus) {
+    //     this.humidityStatus = false
+    //   }
+    //   this.devicesData.push({"deviceName": "湿度传感器", "value": humidityValueString, "status": deviceStatus2})
+    // }
+    //
+    // this.devicesData.push({"deviceName": "舵机", "value": 'none', "status": false})
+    // this.devicesData.push({"deviceName": "蜂鸣器", "value": 'none', "status": false})
+
+    // 无传感器测试用
+    {
+      const ppmValue = getRandomNumber(10, 25); let deviceStatus = ppmValue > this.smokeSensorThreshold;
+      if(deviceStatus) this.addData('2', '检测到可燃气体，二级警报!')
+      this.devicesData.push({"deviceName": "烟雾传感器", "value": ppmValue.toString(), "status": deviceStatus})
+      const fireValue = getRandomNumber(8, 19); deviceStatus = fireValue > this.flameSensorThreshold;
+      if(deviceStatus) this.addData('2', '检测到可燃气体，二级警报!')
+      this.devicesData.push({"deviceName": "火焰传感器", "value": fireValue.toString(), "status": deviceStatus})
+      const temperatureValue = getRandomNumber(20, 58); deviceStatus = temperatureValue > this.temperatureThreshold;
+      if(deviceStatus) this.addData('2', '检测到可燃气体，二级警报!')
+      this.devicesData.push({"deviceName": "温度传感器", "value": temperatureValue.toString(), "status": deviceStatus})
+      const humidityValue = getRandomNumber(10, 35); deviceStatus = humidityValue > this.humidityThreshold;
+      if(deviceStatus) this.addData('2', '检测到可燃气体，二级警报!')
+      this.devicesData.push({"deviceName": "湿度传感器", "value": humidityValue.toString(), "status": deviceStatus})
+      this.devicesData.push({"deviceName": "舵机", "value": 'none', "status": false})
+      this.devicesData.push({"deviceName": "蜂鸣器", "value": 'none', "status": false})
     }
 
-    // 获取火焰传感器 adc值
-    const fireValue_f = getFIREValue();
-    if(fireValue_f){
-      const fireValue = fireValue_f
-      const fireValueString = fireValue_f.toFixed(3)
-      const deviceStatus = fireValue < this.flameSensorThreshold
-      if(deviceStatus && !this.flameSensorStatus) {
-        this.flameSensorStatus = true
-        this.addData('1', '检测到火焰，一级警报!')
-        // 自动开启舵机
-        this.pwm1_start = true
-
-      }
-      else if(!deviceStatus && this.flameSensorStatus) {
-        this.flameSensorStatus = false
-        this.pwm1_start = false
-      }
-      this.devicesData.push({"deviceName": "火焰传感器", "value": fireValueString, "status": deviceStatus})
-    }
-
-    // 温湿度
-    const sensorData_f = readTemperatureAndHumidity()
-    if(sensorData_f) {
-      const temperatureValue = sensorData_f.temperatureC
-      const temperatureValueString = temperatureValue.toFixed(3)
-      const deviceStatus1 = temperatureValue > this.temperatureThreshold
-      if(deviceStatus1 && !this.temperatureStatus) {
-        this.temperatureStatus = true
-        this.addData('3', `温度高于${this.temperatureThreshold}，三级警报!`)
-      }
-      else if(!deviceStatus1 && this.temperatureStatus) {
-        this.temperatureStatus = false
-      }
-      this.devicesData.push({"deviceName": "温度传感器", "value": temperatureValueString, "status": deviceStatus1})
-
-      const humidityValue = sensorData_f.humidity
-      const humidityValueString = sensorData_f.humidity.toFixed(3)
-      const deviceStatus2 = humidityValue < this.humidityThreshold
-      if(deviceStatus2 && !this.humidityStatus) {
-        this.humidityStatus = true
-        this.addData('3', `湿度低于${this.humidityThreshold}，三级警报!`)
-      }
-      else if(!deviceStatus2 && this.humidityStatus) {
-        this.humidityStatus = false
-      }
-      this.devicesData.push({"deviceName": "湿度传感器", "value": humidityValueString, "status": deviceStatus2})
-    }
-
-    this.devicesData.push({"deviceName": "舵机", "value": 'none', "status": false})
-    this.devicesData.push({"deviceName": "蜂鸣器", "value": 'none', "status": false})
-
-    console.log(JSON.stringify(this.devicesData))
+    // console.log(JSON.stringify(this.devicesData))
 
     // 更新主页警告状态
     if(this.flameSensorStatus) this.systemStatus = 1
@@ -171,24 +195,19 @@ struct Home {
     this.gridData = this.devicesData
   }
 
-  addData(level: string, infoString: string) {
-    getTimeString().then(time => {
-      const item = {
-        date: time,
-        level: level.toString(),
-        info: infoString
-      }
-      insertData(getContext(this), item).then(res => {
+  addData(level_s: string, info_s: string) {
+    getTimeString().then(time_s => {
+      const item: logItem = {time: time_s, level: level_s, info: info_s}
+      insertData(getContext(this), item).then(() => {
         // 更新列表
         console.log(`update: ${JSON.stringify(item)}`);
         this.indexOffset++
-        if (res) this.logListData.unshift(item)
-        else console.log(`update error`)
+        this.logListData.unshift(item)
         // 弹窗警告
         AlertDialog.show(
           {
             title: '警告!',
-            message: infoString,
+            message: info_s,
             autoCancel: true,
             alignment: DialogAlignment.Bottom,
             offset: { dx: 0, dy: -20 },
@@ -293,13 +312,13 @@ struct Home {
                     Column() {
                       // 状态显示
                       Text(`${getStatusText(item.status)}`)
-                        .fontColor(getStatusColor(item.status))
+                        .fontColor(getStatusTextColor(item.status))
                         .fontSize(this.dpi / 4)
                         .fontWeight(FontWeight.Bold)
                       // 数据显示
                       Text(String(item.value))
                         .fontSize(this.dpi / 4)
-                        .fontColor(getStatusColor(item.status))
+                        .fontColor(getStatusTextColor(item.status))
                         .padding({top: '2%'})
                     }
                     .width('100%')
@@ -311,7 +330,7 @@ struct Home {
                         .backgroundColor('#00000000')
                         .backgroundImage($r('app.media.ic_public_settings'))
                         .backgroundImageSize({ width: '100%', height: '100%' })
-                        .onClick((isClick) => {
+                        .onClick(() => {
                           // 弹窗
                           if(index === 1) this.controller_dialog1.open()
                           else this.controller_dialog2.open()
@@ -328,13 +347,13 @@ struct Home {
                     if(index === 2) {
                       Text(`${item.value}°C`)
                         .fontSize(this.dpi / 3)
-                        .fontColor('#708090')
+                        .fontColor(getNumberTextColor(item.value, this.temperatureThreshold))
                         .padding('5%')
                     }
                     else {
                       Text(`${item.value}%`)
                         .fontSize(this.dpi / 3)
-                        .fontColor('#708090')
+                        .fontColor(getNumberTextColor(item.value, this.humidityThreshold))
                         .padding('5%')
                     }
                     Column() {
@@ -344,7 +363,7 @@ struct Home {
                         .backgroundColor('#00000000')
                         .backgroundImage($r('app.media.ic_public_settings'))
                         .backgroundImageSize({ width: '100%', height: '100%' })
-                        .onClick((isClick) => {
+                        .onClick(() => {
                           // 弹窗
                           if(index === 2) this.controller_dialog3.open()
                           else this.controller_dialog4.open()
@@ -641,17 +660,21 @@ function getStatusText(x: number){
   if(x === 0) return '正常'
   else return '异常'
 }
-function getStatusColor(x: number){
-  if(x === 1) return Color.Red
-  if(x === 0) return Color.Green
+function getStatusTextColor(x: Boolean){
+  if(x) return Color.Red
+  else return Color.Green
 }
+function getNumberTextColor(x: number, y: number){
+  if(x > y) return Color.Red
+  return '#708090'
+}
+
 function getTimeString(): any {
   const promise = systemDateTime.getCurrentTime(false)
   return promise.then(timestamp => {
-    //timestamp += getRandomNumber(1000000000, 5000000000)     // 测试用随机数
     const currentTime: Date = new Date(timestamp);
     const year: number = currentTime.getFullYear();
-    const month: number = currentTime.getMonth() + 1; // 月份从0开始，需要加1
+    const month: number = currentTime.getMonth() + 1;
     const day: number = currentTime.getDate();
     const hours: number = currentTime.getHours();
     const minutes: number = currentTime.getMinutes();
